@@ -1,3 +1,3 @@
 # Writing center analysis
 
-This research project consisted in investigating whether students who use SLCC's Student Writing Center get better grades.
+This research project investigated whether students who used SLCC's Student Writing Center got better grades.
