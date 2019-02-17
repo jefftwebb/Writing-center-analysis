@@ -1,0 +1,666 @@
+---
+title: "DRAFT:  Does Use of SLCC's Student Writing Center Improve Student Performance?"
+author: | 
+  | Jeff Webb
+  | Office of Institutional Research and Reporting,
+  | Salt Lake Community College
+date: \today
+header-includes:
+    - \usepackage{fancyhdr}
+    - \pagestyle{fancy}
+    - \rhead{\includegraphics[width=3cm,height=3cm]{logo.jpg}}
+
+output:
+  pdf_document:
+      number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(results='asis',echo = FALSE, message=F, warning=F,cache=TRUE)
+library(slcc)
+library(stringr)
+library(knitr)
+library(arm)
+library(MatchIt)
+colors=c("#00ABE1", "#FFCD00", "#003865", "#833921")
+ 
+```
+
+
+## Introduction 
+
+The Student Writing Center (SWC) at Salt Lake Community College (SLCC) offers peer and faculty writing tutoring for students at a number of locations:  Redwood, Jordan, South City, West Valley, Library Square and the Academic Literacy Center (in TB on Redwood campus). Students using the SWC are seeking consultation on papers they are writing for a variety of courses:  English 1010 and English 2010, primarily, but also courses such as Math 1030, Political Science 1100, History 1700, Communication 1010 and Psychology 1100, among others.  
+
+A previous study showed a large improvement in grades for students who used the SWC compared to students in the same classes who did not use the SWC. However, that study did not control for self-selection bias. It is possible that improved grade outcomes for students choosing to use the SWC was due to their greater motivation and engagement compared to peers. The present study updates the previous one by controlling, as much as possible, for self-selection bias.  Research questions included: 
+1. Do students who use the SWC get higher grades in the originating course? (By "originating course" we mean the course for which the students sought SWC tutoring help.)
+2. Do students who use the SWC have higher rates of retention into the subsequent semester?
+
+## Talking Points
+- Propensity score matching (PSM) was used in this study to correct for self-selection bias among students who chose to use the SWC.  The purpose of PSM is to make an observational study resemble a randomized study as closely as possible, thereby eliminating  pre-existing differences among students as possible explanations for differences in group outcomes.
+- After PSM, statistical analysis showed that:
+    1. Students who used the SWC earned higher grades in the originating course compared to  those who did not use the SWC.  On a 4 point numeric scale using the SWC was associated with, on average, a .3 to .6 advantage in grade performance. 
+    2. Students who used the SWC had higher average retention rates into the next semester compared to  those who did not use the SWC,  by  a margin of about 1-4%.  
+    
+## Data
+Clint Gardner, Program Manager of the SWC, provided SLCC's Office of Institutional Research and Reporting (IRR) with a dataset of 26,317 unique SWC visits by 8473 students over the past 5 years (spring 2012 to fall 2016). This dataset was joined to Banner data to add student demographic and performance variables.  From Banner IRR also developed a comparison group: students who did not visit the SWC but took the same courses as those taken by SWC students.  In this research, we focused on the six courses for which students most often visited the SWC: ENGL 1010, ENGL 2010, HIST 1700, COMM 1010, MATH 1030 and PSY 1100. After subsetting and joining, the dataset included 3065 student course enrollments associated with a SWC visit and 47,118 student course enrollments in the same courses without a SWC visit. Details on data preparation and cleaning are provided below.
+
+### Data analysis methods
+Results from observational studies can be misleading for the reasons mentioned above. In  recent  years,  however,  methods  have  been  developed that  lessen  the  gap  between observational  studies  and  the  gold-standard  of  research,  the  randomized  clinical  trial (RCT). In short, the methodological goal of an observational study should be to organize the data to resemble an RCT as closely as possible (Rosenbaum and Rubin, 1983).  In an RCT, assignment to the treatment condition is unrelated to the outcome of interest because assignment is random.  Not so in an observational study.  But corrective options exist, the best known of which is PSM.  In this study students  who  used the SWC were matched with students who did not, on a variety of characteristics possibly associated with use of the SWC.  Matching should  eliminate systematic differences between the  groups, as in an RCT. Note: matching variables should pre-date the intervention, which, in this case, was SWC use.
+
+IRR matched students who used the SWC with those taking the same courses who did not use the SWC. There was no performance information for new students (except for accuplacer scores, which are generally recognized as flawed indicators of aptitude and preparation).  For this reason, the analysis was restricted to students who used the SWC in their second, or later, semester at the college. For convenience, we label students who used the SWC as the "treatment group" and those who did not use the SWC as the "control group."
+
+Course grade and retention to the next term were the outcome variables in the analysis. Retention was analyzed by comparing treatment and control using logistic regression. Grade differences were evaluated by comparing treatment and control using both Ordinary Least Squares (OLS) regression and ordinal logistic regression.  In the former case grades were converted to a number:  A = 4, B = 3 and so on.  In the latter case, grades were left as alphabetic and categorical.  
+
+One problem with using OLS regression in this instance is that a number of regression assumptions are problematic:  model errors, for example, are not normally distributed due to the curious "U-shaped" grade distribution at SLCC, with point masses at 0 and 4, in addition to the fact that the range of the outcome variable, grades, is not unbounded.  For this particular application--comparing conditional grade means between treatment and control--OLS likely works just fine. Nevertheless, we used the additional model listed above--ordinal logistic regression--for comparison, which should be more robust to the distributional peculiarities of grades and can help confirm the results obtained by OLS regression.
+
+### Data cleaning and preparation
+
+As noted the dataset provided by Clint contained 26,317 unique SWC visits by 8473 students over the past 5 years (spring 2012 to fall 2016). This was joined to Banner data to obtain student demographic information. Filtering choices:
+- First semester students were excluded for purposes of matching, as described above, and only visits to the SWC involving ENGL 1010, ENGL 2010, HIST 1700, COMM 1010, MATH 1030 and PSY 1100 were considered.  
+
+- We counted only one visit per student per term for a given class.  Thus, students who visited the SWC twice for different classes were counted twice, and students who visited the SWC for the same class in two different semesters were counted twice.
+
+- Students who did not earn a letter grade in a class (including I, W, and P) were excluded from the analysis.
+
+These exclusions brought the number of students in the dataset with SWC visits down to 3065 for  analysis.  These students were matched with those who did not have a SWC visit on the following characteristics:  prior credits, prior gpa, gender, age, ethnicity (dichotomized into a binary white/non-white variable), originating course, term (e.g., 201540, 201620), and term sequence. Term sequence is a variable indicating when in a student's career the SWC was used: second term, third term, etc.  For PSM it is not necessary that matched students have exactly the same characteristics only that the *propensity* to use the SWC, defined by a logistic model using the matching variables, is *close*:  matched students are "nearest neighbors." 
+
+
+
+
+```{r wc_data_and_functions, include= F}
+#Download data
+dd <- read.csv("writing_center_data_01312017.csv")[,1:14]
+banner <- read.csv("writing_center_banner_data_02012017.csv")
+
+
+# Format SWC data
+d <- dd %>% select(id = Writer.Student.Id,
+                  major = Self.Reported.Major,
+                  tutor_type = Tutor.Classification,
+                  campus = Location,
+                  subject = Class.Department,
+                  number = Class.Number,
+                  date = Appointment.Date...Time,
+                  reason = Motivation.for.Visit,
+                  length = Appt.Length..minutes.) %>%
+  mutate(date = sapply(strsplit(as.character(date), split=" "), "[", 1),
+         date = as.Date(date, format= "%m/%d/%y"), 
+         class = ifelse(subject != "",paste0(subject, number), ""),
+         year = substr(date, 1, 4)) %>%
+  group_by(id) %>%
+  mutate(repeats = seq(1, length(id)))
+
+
+
+#Create a term code
+d <- d %>% 
+  mutate(month = substr(date, 6, 7),
+         day = substr(date, 9,10),
+         monthday = as.numeric(paste0(month,day)),
+         semester =ifelse(monthday > 815 & monthday < 1230, "Fall",
+                          ifelse(monthday > 101 & monthday < 510, "Spring",
+                                 "Summer")),
+         term_code = ifelse(semester=="Fall", 40,
+                            ifelse(semester=="Spring", 20, 30)),
+         term = as.numeric(paste0(year,term_code)))
+
+
+# Functions
+convert_grade <- function(grade, include_w=F){
+  x <- grade
+  
+  if(include_w==F){
+    vec <- rep(NA, length(x))
+    vec[which(x=="A")] <- 4; vec[which(x=="A-")] <- 3.7; vec[which(x=="B+")] <- 3.4; vec[which(x=="B")] <- 3; vec[which(x=="B-")] <- 2.7;
+    vec[which(x=="C+")] <- 2.4; vec[which(x=="C")] <- 2; vec[which(x=="C-")] <- 1.7; vec[which(x=="D+")] <- 1.4; vec[which(x=="D")] <- 1;
+    vec[which(x=="D-")] <- .7; vec[which(x=="E")] <- 0; vec[which(x=="I")] <- 0
+  }
+  
+  if(include_w==T){
+    vec <- rep(NA, length(x))
+    vec[which(x=="A")] <- 4; vec[which(x=="A-")] <- 3.7; vec[which(x=="B+")] <- 3.4; vec[which(x=="B")] <- 3; vec[which(x=="B-")] <- 2.7;
+    vec[which(x=="C+")] <- 2.4; vec[which(x=="C")] <- 2; vec[which(x=="C-")] <- 1.7; vec[which(x=="D+")] <- 1.4; vec[which(x=="D")] <- 1;
+    vec[which(x=="D-")] <- .7; vec[which(x=="E")] <- 0; vec[which(x=="I")] <- 0;  vec[which(x=="W")] <- 0
+  }
+  
+  return(vec)
+}
+
+find_term_seq <- function(term, gap=T){
+  if(gap==T){
+    ts <- seq(min(term),max(term), by=10)
+    ts <- ts[which(substr(ts, 5,6)=="20" | substr(ts, 5,6)=="30" | substr(ts, 5,6)=="40")]
+    df <- data.frame(terms=ts, seq=seq(1, length(ts)))
+    vec <- left_join(data.frame(terms=term), df, by="terms")$seq
+  }
+  if(gap==F){
+    u_terms <- unique(term)
+    u_terms <- u_terms[order(u_terms)]
+    df <- data.frame(terms=u_terms, seq=seq(1, length(u_terms)))
+    vec <- left_join(data.frame(terms=term), df, by="terms")$seq
+  }
+  vec
+  
+}
+
+```
+
+
+```{r banner_data, include=F}
+b <- banner
+
+names(b) <- tolower(names(b))
+
+# Create term summary of credits, gpa and enrollment.
+# Strategy is to create term variables then join back to the large
+# student course data set.
+
+# bt stands bor banner data aggregated to term
+bt <- b %>% 
+  mutate(class = paste0(subject,course),
+         grade_num = convert_grade(grade, include_w = T)) %>%
+  arrange(id, term) %>%
+  group_by(id, term) %>%
+  mutate(sum_credits = sum(credits, na.rm=T),
+         term_gpa = weighted.mean(grade_num, w=credits, na.rm=T),
+         term_gpa = ifelse(is.nan(term_gpa), NA, term_gpa),
+         num_class = length(class)) %>%
+  select(id, last, term, sum_credits, term_gpa, num_class, grade) %>%
+  group_by(id, term) %>%
+  slice(1) 
+
+
+# add seq variables incrementally
+bt1 <- bt %>% 
+  data.frame() %>%
+  arrange(id, term) %>%
+  group_by(id) %>%
+  mutate(n = n(),
+         term_seq_gaps = ifelse(n == 1, 1,
+                           as.numeric(find_term_seq(term))),
+         term_seq = ifelse(n == 1, 1,
+                as.numeric(find_term_seq(term, gap = F))))
+
+
+# Calculate retention in the term ahead
+bt2 <- bt1 %>% 
+  data.frame() %>%
+  group_by(id) %>%
+  mutate(next_term = c(term_seq[-1], term_seq[length(term_seq)]),
+         enroll_diff = ifelse(n > 1, next_term - term_seq, 0),
+         retention= ifelse(enroll_diff == 1,1,0 ))
+
+
+# Calculate prior term variables
+bt3 <- bt2 %>%
+  data.frame() %>%
+  group_by(id) %>% 
+  mutate(cum_credits = cumsum(sum_credits)) %>% 
+  filter(!is.na(term_gpa)) %>%
+  group_by(id) %>%
+  mutate(cum_gpa = cummean(term_gpa),
+         prior_gpa = c(NA, cum_gpa[-length(cum_gpa)]),
+         prior_term_gpa = c(NA, term_gpa[-length(term_gpa)]),
+         prior_credits = c(NA, cum_credits[-length(cum_credits)]))
+
+# join bt3 to b
+b <-  b[,c(1,2,4,5,6,7,8,9)] %>% 
+  left_join(bt3[, c(1,2,3,7,9,10,13, 16,18)], by = c("id", "last", "term"))
+
+
+
+```
+
+
+```{r wc_data, include=F}
+# join banner data to  wc data
+
+wc <- b %>% 
+  arrange(id, term) %>%
+  mutate(class = paste0(subject,course),
+         grade_num = convert_grade(grade, include_w = T)) %>%
+  left_join(d, by=c("id","class","term")) %>% 
+  mutate(wc_flag = ifelse(!is.na(tutor_type),1,0) )
+
+#slice wc to last visit
+wc <- wc %>%
+  group_by(id, term, class) %>%
+  slice(length(class))
+
+#filter out non-contributing grades
+unique(wc$grade)
+wc <- wc %>% 
+  filter(grade=="A" | grade=="A-" |grade=="B+" |grade=="B" |grade=="B-" |
+           grade=="C+" |grade=="C" |grade=="C-" |grade=="D+" |grade=="D-" |
+           grade=="D-" |grade=="E" |grade=="P" |grade=="W" |
+           grade=="I")
+
+#reformat variables
+wc$grade <- as.character(wc$grade)
+wc$white <- ifelse(wc$ethnic=="Caucasian", 1, 0)
+
+
+```
+
+
+```{r matching, include=F}
+
+# Create a matched dataset for grades; omitting NAs scrubs out
+# students in their first term
+
+mg <- wc %>% 
+  select(id, white, gender, age, term, prior_gpa, 
+         prior_credits, grade_num, class, term_seq, term_seq_gaps,
+         wc_flag) %>%
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" ) %>%
+  na.omit()
+
+mgout <- matchit(wc_flag ~ prior_credits + prior_gpa +
+                  gender + age + white + factor(class) + factor(term) + term_seq, 
+                data = data.frame(mg),
+                method="nearest")
+
+mg_data <- match.data(mgout)
+
+mr <- wc %>% 
+  select(id, white, gender, age, term, prior_gpa, grade_num,
+         prior_credits, retention, class, wc_flag, term_seq, term_seq_gaps) %>%
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" ) %>%
+  na.omit()
+
+
+mrout <- matchit(wc_flag ~ prior_credits + prior_gpa +
+                   gender + age + white + factor(class) + factor(term) + term_seq, 
+                 data = data.frame(mr),
+                 method="nearest")
+summary(mrout)
+
+mr_data <- match.data(mrout)
+
+
+```
+
+
+
+## Descriptive Results
+
+The following plots and tables present data summaries that contextualize our analysis of the relationship between, on the one hand, SWC usage and grades, on the other, SWC usage and retention. Note that, unless otherwise noted, these descriptive analyses do not use the matched datasets, and would therefore include first semester students.
+
+### Daily SWC visits by date 
+```{r, warning=FALSE}
+
+
+d %>% 
+  group_by(date )%>% 
+  tally %>% 
+  ggplot(aes(date, n)) + 
+  geom_bar(stat="identity", fill=colors[1]) +
+  ylab("visits per day")
+```
+This plot makes it clear that there has been marked seasonality in the use of the SWC, with periods of closure between terms.
+
+### SWC total visits per class over 5 years
+```{r}
+d %>% 
+  group_by(class) %>% 
+  tally %>% 
+  filter(n >200, class != "") %>%
+  ggplot(aes(class, n)) + 
+  geom_bar(stat="identity",fill=colors[1]) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ylab("visits")
+```
+
+Clearly, writing classes accounted for the bulk of the SWC usage.  
+
+### SWC visits by year
+```{r}
+d %>% group_by(year) %>%
+  tally %>% 
+  na.omit() %>%
+  ggplot(aes(year, n, group=1)) + 
+  geom_line(stat="identity", col=colors[1]) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ylab("visits")
+```
+
+SWC visits have been slowly trending up since 2013--perhaps surprising given declining enrollments at SLCC during this period.
+
+### SWC visits by semester and year
+```{r}
+d %>% group_by(semester, year) %>%
+  tally %>% 
+  na.omit() %>%
+  ggplot(aes(year, n, group=1)) + 
+  geom_line(stat="identity", col=colors[1]) +
+  facet_wrap(~semester)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ylab("visits")
+```
+
+The general upward trend in SWC usage was driven largely by spring term students, until 2015, at which point usage in the fall increased dramatically also--recovering almost to 2012 levels.
+
+### SWC visits by tutor type and year
+```{r}
+d %>% group_by(`Tutor type` =tutor_type, year) %>%
+  tally %>% 
+  na.omit() %>%
+  ggplot(aes(year, n, group=`Tutor type`, col=`Tutor type`)) + 
+  geom_line(stat="identity") +
+   scale_color_manual(values=colors[1:2])+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ylab("visits")
+```
+
+Peer tutors did the bulk of the tutoring.
+
+### Histogram of max visits per student
+```{r}
+d %>% 
+  group_by(id) %>%
+summarize(`repeated visits` = max(repeats, na.rm=T)) %>%
+  filter(id != "") %>%
+  ggplot(aes(`repeated visits`)) + geom_histogram(fill=colors[1]) +
+  ylab("max visits") 
+```
+
+The vast majority of students used the SWC just once, though a small number were heavy users--100, 150, 200 visits.
+
+### Average course grades by SWC usage and class 
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010"|  class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020"  ) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  #mutate(visits = ifelse(wc_flag==0,0,repeats)) %>%
+group_by(class, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(`SWC`, grade)) + geom_bar(stat="identity", fill=colors[1]) +
+  facet_wrap(~class) 
+
+```
+
+On the x-axis, 1 represents  SWC usage, 0 none. Students who used the SWC got higher grades.  The question addressed by this research was whether the pronounced grade effect visible in the above plot could be attributed to the SWC or whether it is explainable by pre-existing characteristics shared by students using the SWC, shown in the next figure.
+
+
+### Average course grades by SWC usage and class (table)
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010"|  class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020"  ) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  #mutate(visits = ifelse(wc_flag==0,0,repeats)) %>%
+group_by(class, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  na.omit() %>%
+  kable()
+
+```
+
+### Average course grades by SWC usage and class (matched data)
+
+```{r}
+mg_data %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010"| class=="ENGL2100" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" | class=="HUMA1100" ) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  #mutate(visits = ifelse(wc_flag==0,0,repeats)) %>%
+group_by(class, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(`SWC`, grade)) + geom_bar(stat="identity", fill=colors[1]) +
+  facet_wrap(~class) 
+
+```
+
+The grade effect clearly survived in the matched data.  This strongly suggests that selection bias was not the source of the grade difference.
+
+### Average course grades by SWC usage and class (table with matched data)
+
+```{r}
+mg_data %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010"| class=="ENGL2100" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" | class=="HUMA1100" ) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  #mutate(visits = ifelse(wc_flag==0,0,repeats)) %>%
+group_by(class, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  na.omit() %>%
+  kable()
+
+```
+
+### SWC usage by campus and year
+```{r}
+wc %>% 
+  filter(wc_flag==1) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(campus) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(campus, n)) + geom_bar(stat="identity", fill=colors[1]) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ylab("visits")
+
+```
+
+The Redwood SWC handled the most volume, followed by email consultation.
+
+### Retention by course grade
+
+```{r, warning=FALSE}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(`class grade`=grade_num) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(`class grade`, retained)) + geom_bar(stat="identity", position="dodge",fill=colors[1]) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+The numbering on the x-axis represents the numerical equivalent of letter grades, with A = 4 and E = 0.  Retention was associated with class grade:  the higher the grade, the greater the probability that a student returned the following semester.  
+
+
+
+### Retention by course and SWC use
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(class,  `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(class, retained, fill=`SWC`, group=`SWC`)) + geom_bar(stat="identity", position="dodge") +
+  scale_fill_manual(values=colors[1:2])+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+```
+
+For all classes but Math 1030 SWC usage was associated with  higher retention. SWC = 0 means no SWC and SWC = 1 means used SWC.
+
+### Retention by course grade and SWC use
+
+```{r, warning=F}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(`class grade`=grade_num, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(`class grade`, retained, fill=`SWC`, group=`SWC`)) + geom_bar(stat="identity", position="dodge") +
+  scale_fill_manual(values=colors[1:2])+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  
+
+```
+
+SWC was generally associated with higher retention at grades greater than C- (1.7).
+
+
+### Retention by course grade and SWC use (table)
+
+```{r, warning=F}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(`class grade`=grade_num, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+   na.omit() %>%
+  kable()
+
+```
+
+
+### Retention by course grade and SWC use (matched data)
+
+```{r, warning=F}
+mr_data %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(`class grade`=grade_num, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(`class grade`, retained, fill=`SWC`, group=`SWC`)) + geom_bar(stat="identity", position="dodge") +
+  scale_fill_manual(values=colors[1:2])+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  
+
+```
+
+With matched data the general relationship between retention and SWC usage at higher grades 
+was less pronounced but still largely present. The fact that the retention effect survived in the matched data, especially after controlling for class grade, suggests that selection bias was not the reason SWC students returned the following semester at higher rates.
+
+
+### Retention by class grade and SWC use (table with matched data)
+
+```{r, warning=F}
+mr_data %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(`class grade`=grade_num, `SWC` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+   na.omit() %>%
+  kable()
+
+```
+
+## Statistical Results
+
+```{r, include = F}
+
+#### Grade
+# non matched data
+display(lm(grade_num ~ gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + wc_flag, data=mg)) 
+
+# matched data
+display(m1 <- lm(grade_num ~  wc_flag + gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term), data=mg_data))
+
+m1coeff <- coef(summary(m1))[2, 1]
+m1se <- coef(summary(m1))[2, 2]
+
+
+# ordinal regression
+summary(m2 <- polr(factor(grade_num) ~ wc_flag + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term), data= mg_data))
+
+m2coeff <- coef(summary(m2))[1, 1]
+m2se <- coef(summary(m2))[1, 2]
+
+
+
+
+### Retention
+
+names(mr)
+
+display(glm( retention ~   gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + grade_num + wc_flag, family="binomial", data=mr_data))
+
+#Grades are associated with retention
+display(glm( retention ~ grade_num, family="binomial", data=mr_data)) 
+
+display(m3 <- glm( retention ~ grade_num + wc_flag, family="binomial", data=mr_data)) 
+#same coef and easier to work with
+
+m3coeff <- coef(summary(m3))[3, 1]
+m3se <- coef(summary(m3))[3, 2]
+
+
+# prob point estimate for diff grades
+bprob_hi <- invlogit(coef(m3)[1] + coef(m3)[2]*3 + coef(m3)[3] + 1.96*m3se) - invlogit(coef(m3)[1] + coef(m3)[2]*3)
+
+bprob_low <- invlogit(coef(m3)[1] + coef(m3)[2]*3 + coef(m3)[3] -  1.96*m3se) - invlogit(coef(m3)[1] + coef(m3)[2]*3)
+
+aprob <- invlogit(coef(m3)[1] + coef(m3)[2]*4 + coef(m3)[3]) - invlogit(coef(m3)[1] + coef(m3)[2]*4)
+
+cprob <- invlogit(coef(m3)[1] + coef(m3)[2]*2 + coef(m3)[3]) - invlogit(coef(m3)[1] + coef(m3)[2]*2)
+
+
+
+```
+
+### Grades
+Students who used the SWC received higher grades in the originating course compared to their peers who did not use the SWC, even after adjusting for differences due to gender, ethnicity, prior academic performance (gpa), accumulated credits, term, and number of terms attended. The different models--linear and ordinal regression on matched sets of students--estimated a substantial grade advantage for students who used the SWC in the matched data.  
+
+Specifically, the 95% confidence intervals for the average impact of SWC usage on grades was [`r round(m1coeff-1.96*m1se,2)`, `r round(m1coeff+1.96*m1se,2)`] for linear regression and [`r round(m2coeff-1.96*m2se,2)`, `r round(m2coeff+1.96*m2se,2)`] for ordinal logistic regression. 
+
+There is always uncertainty in statistical estimation.  95% confidence intervals quantify uncertainty by identifying a high-probability range for, in this case, the estimated difference in grades between the two groups, SWC and non-SWC. A range that does not include 0--meaning no difference--is equivalent to a statistically significant difference at the p < .05 level. In reporting two possible confidence intervals, associated with the different models, we introduce additional uncertainty, which we can summarize by saying that, on average, SWC students received higher grades compared to non-SWC students by as little as `r round(m1coeff-1.96*m1se,2)` (the lower bound of the smaller interval) or as much as `r round(m2coeff+1.96*m2se,2)` (the upper bound of the larger interval), on a four point scale, all other things being equal.  This  result is, we emphasize,  statistically significant at the p < .05 level. 
+
+It is hard to know which model, linear regression or ordinal logistic regression, to trust more.  While conservative estimates are generally more realistic with small samples, this is not a small sample.  And given the  non-normal distribution of grades, it might well be the case that the ordered logistic model fits the data better than the linear model. Consequently, the higher estimate of the grade effect may be more trustworthy.  It should be emphasized that even the smaller effect size estimated by the linear model should be considered large for an educational context, where complex and numerous influences on performance tend to wash out strong relationships. 
+
+Statistical nuances aside, the main analytical result is unequivocal:  Students who used  the SWC got higher grades in the originating course.
+
+### Retention
+
+Students who used the SWC also returned for the next semester at higher rates compared to their peers in the matched data who did not use the SWC, even after adjusting for differences due to gender, ethnicity, prior academic performance (gpa), accumulated credits, term, and number of terms attended.  A logistic model was used to estimate this difference in retention.
+
+Specifically, the 95% confidence intervals for the average impact of SWC usage on the probability of retention was [`r round(bprob_low,2)`, `r round(bprob_hi,2)`].  That is, students using the SWC had retention rates that were `r round(bprob_low,2)*100`% to `r round(bprob_hi,2)*100`% higher than students who did not use the SWC.  This confidence interval did not include 0, which means that the difference in retention rates was  statistically significant at the p < .05 level. 
+
+It was important to include course grade in the model as a covariate. Because students using SWC got higher grades in the originating course, according the above result, and because grades were strongly associated with retention, we risked misunderstanding the retention effect if we did not take course grade into consideration. Including course grade as a covariate, then, allowed us to remove it as an influence on retention and thereby to estimate the unique contribution of the SWC.  This leaves the causality of the retention effect unclear,  since it may well be that the higher grades associated with SWC use mediated its effect on retention.  While the causal mechanism of the SWC's impact on retention is theoretically interesting, to be sure, from a practical standpoint the question of whether the impact was direct or indirect matters little.  What matters is the *impact*, which is statistically indisputable.
+
+While retention rates were associated with the grade earned in the originating course, the retention *difference* did not vary statistically with course grade.  The retention difference between SWC and non-SWC students was about the same regardless of whether students earned an A, B, or C in the originating course. 

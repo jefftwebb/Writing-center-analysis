@@ -1,0 +1,554 @@
+---
+title: "DRAFT:  Writing Center Analysis"
+output: 
+  beamer_presentation:
+    theme: "Madrid"
+    #colortheme: "dolphin"
+    fonttheme: "structurebold"
+    incremental:  false
+    fig_width: 7
+    fig_height: 6
+    fig_caption:  false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(results='asis',echo = FALSE, message=F, warning=F,cache=TRUE)
+library(slcc)
+library(stringr)
+library(knitr)
+library(arm)
+library(MatchIt)
+
+```
+
+
+# Writing Center Analysis
+
+## Question
+
+- A previous study showed a large improvement in grades for students who used the writing center compared to students in the same classes who did not use the writing center.
+- However, this study did not control for self-selection bias. It is possible that improved grade outcomes for students choosing to use the writing center is due to greater motivation and engagement compared to their peers.
+- Question:  After controlling for self-selection bias, is student use of the writing center correlated with:
+    + higher grades in the focus class?
+    + retention in the subsequent semester?
+    
+## Data
+- Clint Gardner provided a dataset of 26,317 unique writing center visits by 8473 students over the past 5 years (spring 2012 to fall 2016).
+- This dataset was joined to Banner data to add demographic and performance variables.
+- From Banner we also developed a comparison group: students who did not visit the writing center but took the same courses as those taken by the writing center students.
+- We focused on the courses for which students most often visited the writing center: ENGL 1010, ENGL 2010, HIST 1700, COMM 1010, MATH 1030 and PSY 1100.
+- After subsetting and joining, the dataset included 3065 student course enrollments associated with a writing center visit and 47,118 student course enrollments in the same courses without a writing center visit.
+
+
+## Data analysis methods
+- We matched students who used the writing center with those taking the same courses who did not use the writing center, using the following as matching covariates:  term, class, gender, ethnicity, age, cumulative GPA (as of prior term), cumulative credits (as of prior term).
+- There was no performance information for new students (except for accuplacer scores, which are flawed indicators of aptitude and preparation).  For this reason, the analysis was restricted to students who used the writing center in their second, or later, semester at the college. 
+- Course grade and retention to the next term were the outcome variables in the analysis. Details on analysis methods are given below.
+
+
+
+```{r wc_data_and_functions, include= F}
+dd <- read.csv("writing_center_data_01312017.csv")[,1:14]
+banner <- read.csv("writing_center_banner_data_02012017.csv")
+
+
+# Format writing center data
+d <- dd %>% select(id = Writer.Student.Id,
+                  major = Self.Reported.Major,
+                  tutor_type = Tutor.Classification,
+                  campus = Location,
+                  subject = Class.Department,
+                  number = Class.Number,
+                  date = Appointment.Date...Time,
+                  reason = Motivation.for.Visit,
+                  length = Appt.Length..minutes.) %>%
+  mutate(date = sapply(strsplit(as.character(date), split=" "), "[", 1),
+         date = as.Date(date, format= "%m/%d/%y"), 
+         class = ifelse(subject != "",paste0(subject, number), ""),
+         year = substr(date, 1, 4)) %>%
+  group_by(id) %>%
+  mutate(repeats = seq(1, length(id)))
+
+
+
+#Create a term code
+d <- d %>% 
+  mutate(month = substr(date, 6, 7),
+         day = substr(date, 9,10),
+         monthday = as.numeric(paste0(month,day)),
+         semester =ifelse(monthday > 815 & monthday < 1230, "Fall",
+                          ifelse(monthday > 101 & monthday < 510, "Spring",
+                                 "Summer")),
+         term_code = ifelse(semester=="Fall", 40,
+                            ifelse(semester=="Spring", 20, 30)),
+         term = as.numeric(paste0(year,term_code)))
+
+head(d)
+######## Functions
+convert_grade <- function(grade, include_w=F){
+  x <- grade
+  
+  if(include_w==F){
+    vec <- rep(NA, length(x))
+    vec[which(x=="A")] <- 4; vec[which(x=="A-")] <- 3.7; vec[which(x=="B+")] <- 3.4; vec[which(x=="B")] <- 3; vec[which(x=="B-")] <- 2.7;
+    vec[which(x=="C+")] <- 2.4; vec[which(x=="C")] <- 2; vec[which(x=="C-")] <- 1.7; vec[which(x=="D+")] <- 1.4; vec[which(x=="D")] <- 1;
+    vec[which(x=="D-")] <- .7; vec[which(x=="E")] <- 0; vec[which(x=="I")] <- 0
+  }
+  
+  if(include_w==T){
+    vec <- rep(NA, length(x))
+    vec[which(x=="A")] <- 4; vec[which(x=="A-")] <- 3.7; vec[which(x=="B+")] <- 3.4; vec[which(x=="B")] <- 3; vec[which(x=="B-")] <- 2.7;
+    vec[which(x=="C+")] <- 2.4; vec[which(x=="C")] <- 2; vec[which(x=="C-")] <- 1.7; vec[which(x=="D+")] <- 1.4; vec[which(x=="D")] <- 1;
+    vec[which(x=="D-")] <- .7; vec[which(x=="E")] <- 0; vec[which(x=="I")] <- 0;  vec[which(x=="W")] <- 0
+  }
+  
+  return(vec)
+}
+
+find_term_seq <- function(term, gap=T){
+  if(gap==T){
+    ts <- seq(min(term),max(term), by=10)
+    ts <- ts[which(substr(ts, 5,6)=="20" | substr(ts, 5,6)=="30" | substr(ts, 5,6)=="40")]
+    df <- data.frame(terms=ts, seq=seq(1, length(ts)))
+    vec <- left_join(data.frame(terms=term), df, by="terms")$seq
+  }
+  if(gap==F){
+    u_terms <- unique(term)
+    u_terms <- u_terms[order(u_terms)]
+    df <- data.frame(terms=u_terms, seq=seq(1, length(u_terms)))
+    vec <- left_join(data.frame(terms=term), df, by="terms")$seq
+  }
+  vec
+  
+}
+
+```
+
+
+```{r banner_data, include=F}
+b <- banner
+
+names(b) <- tolower(names(b))
+
+#term summary of credits, gpa and enrollment.
+# Strategy is to create term variables then join back to the large
+# student course data set.
+#Don't filter out TR until after calculating credits
+bt <- b %>% 
+  mutate(class = paste0(subject,course),
+         grade_num = convert_grade(grade, include_w = T)) %>%
+  arrange(id, term) %>%
+  group_by(id, term) %>%
+  mutate(sum_credits = sum(credits, na.rm=T),
+         term_gpa = weighted.mean(grade_num, w=credits, na.rm=T),
+         term_gpa = ifelse(is.nan(term_gpa), NA, term_gpa),
+         num_class = length(class)) %>%
+  select(id, last, term, sum_credits, term_gpa, num_class, grade) %>%
+  group_by(id, term) %>%
+  slice(1) 
+
+check(bt)
+
+#add seq variables
+bt1 <- bt %>% 
+  data.frame() %>%
+  arrange(id, term) %>%
+  group_by(id) %>%
+  mutate(n = n(),
+         term_seq_gaps = ifelse(n == 1, 1,
+                           as.numeric(find_term_seq(term))),
+         term_seq = ifelse(n == 1, 1,
+                as.numeric(find_term_seq(term, gap = F))))
+
+check(bt1)
+
+#calculate retention in the term ahead
+bt2 <- bt1 %>% 
+  data.frame() %>%
+  group_by(id) %>%
+  mutate(next_term = c(term_seq[-1], term_seq[length(term_seq)]),
+         enroll_diff = ifelse(n > 1, next_term - term_seq, 0),
+         retention= ifelse(enroll_diff == 1,1,0 ))
+
+check(bt2)
+
+#caluclate prior term variables
+bt3 <- bt2 %>%
+  data.frame() %>%
+  group_by(id) %>% 
+  mutate(cum_credits = cumsum(sum_credits)) %>% 
+  filter(!is.na(term_gpa)) %>%
+  group_by(id) %>%
+  mutate(cum_gpa = cummean(term_gpa),
+         prior_gpa = c(NA, cum_gpa[-length(cum_gpa)]),
+         prior_term_gpa = c(NA, term_gpa[-length(term_gpa)]),
+         prior_credits = c(NA, cum_credits[-length(cum_credits)]))
+
+
+check(bt3) 
+names(bt3[, c(1,2,3,7,9,10,13, 16,18)])
+names(b)
+names(b[,c(1,2,4,5,6,7,8,9)])
+# join bt to b
+b <-  b[,c(1,2,4,5,6,7,8,9)] %>% 
+  left_join(bt3[, c(1,2,3,7,9,10,13, 16,18)], by = c("id", "last", "term"))
+
+check(b)
+names(d)
+
+```
+
+
+```{r wc_data, include=F}
+# join to wc
+wc <- b %>% 
+  arrange(id, term) %>%
+  mutate(class = paste0(subject,course),
+         grade_num = convert_grade(grade, include_w = T)) %>%
+  left_join(d, by=c("id","class","term")) %>% 
+  mutate(wc_flag = ifelse(!is.na(tutor_type),1,0) )
+
+#slice wc to last visit
+wc <- wc %>%
+  group_by(id, term, class) %>%
+  slice(length(class))
+
+#filter out non-contributing grades
+unique(wc$grade)
+wc <- wc %>% 
+  filter(grade=="A" | grade=="A-" |grade=="B+" |grade=="B" |grade=="B-" |
+           grade=="C+" |grade=="C" |grade=="C-" |grade=="D+" |grade=="D-" |
+           grade=="D-" |grade=="E" |grade=="P" |grade=="W" |
+           grade=="I")
+
+#reformat variables
+wc$grade <- as.character(wc$grade)
+wc$white <- ifelse(wc$ethnic=="Caucasian", 1, 0)
+
+#Turn NAs into 0s
+# wc$prior_gpa <- ifelse(is.na(wc$prior_gpa), 0, wc$prior_gpa)
+# wc$prior_credits <- ifelse(is.na(wc$prior_credits), 0, wc$prior_credits)
+
+table(wc$wc_flag)
+
+
+```
+
+
+```{r matching, include=F}
+mg <- wc %>% 
+  select(id, white, gender, age, term, prior_gpa, 
+         prior_credits, grade_num, class, term_seq, term_seq_gaps,
+         wc_flag) %>%
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" ) %>%
+  na.omit()
+
+unique(mg$term_seq)
+
+table(mg$wc_flag)
+
+check(mg)
+str(mg)
+sum(mg$wc_flag)
+
+mgout <- matchit(wc_flag ~ prior_credits + prior_gpa +
+                  gender + age + white + class +term, 
+                data = data.frame(mg),
+                method="nearest")
+summary(mgout)
+str(mgout)
+mg_data <- match.data(mgout)
+
+mr <- wc %>% 
+  select(id, white, gender, age, term, prior_gpa, grade,
+         prior_credits, retention, class, wc_flag, term_seq, term_seq_gaps) %>%
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" ) %>%
+  na.omit()
+
+check(mr)
+
+mrout <- matchit(wc_flag ~ prior_credits + prior_gpa +
+                   gender + age + white + class +term + term_seq, 
+                 data = data.frame(mr),
+                 method="nearest")
+
+mr_data <- match.data(mrout)
+
+```
+
+
+
+# Descriptive Results
+
+## Writing center usage by date
+```{r}
+
+
+d %>% 
+  group_by(date) %>% 
+  tally %>% 
+  ggplot(aes(date, n)) + 
+  geom_bar(stat="identity")
+```
+
+## Writing center usage by class
+```{r}
+d %>% 
+  group_by(class) %>% 
+  tally %>% 
+  filter(n >200) %>%
+  ggplot(aes(class, n)) + 
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+## Writing center visits by semester and year
+```{r}
+d %>% group_by(semester, year) %>%
+  tally %>% 
+  na.omit() %>%
+  ggplot(aes(year, n, group=1)) + 
+  geom_line(stat="identity") +
+  facet_wrap(~semester)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+## Writing center visits by tutor type and year
+```{r}
+d %>% group_by(`Tutor type` =tutor_type, year) %>%
+  tally %>% 
+  na.omit() %>%
+  ggplot(aes(year, n, group=`Tutor type`, col=`Tutor type`)) + 
+  geom_line(stat="identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+## Histogram of max visits per student
+```{r}
+d %>% 
+  group_by(id) %>%
+summarize(`repeated visits` = max(repeats, na.rm=T)) %>%
+  filter(id != "") %>%
+  ggplot(aes(`repeated visits`)) + geom_histogram() +
+  xlab("max visits") 
+```
+
+
+
+## Average course grades by writing center usage and class
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010"| class=="ENGL2100" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" | class=="HUMA1100" ) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  #mutate(visits = ifelse(wc_flag==0,0,repeats)) %>%
+group_by(class, `writing center` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(`writing center`, grade)) + geom_bar(stat="identity") +
+  facet_wrap(~class) 
+
+```
+
+## Average course grades by writing center visits and class
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010"| class=="ENGL2100" | class=="MATH1030" |
+           class=="PSY1100"| class=="LE1020" | class=="HUMA1100",
+         wc_flag==1, repeats <5) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(class, visits = factor(repeats)) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(visits, grade, group=1)) + geom_line(stat="identity") +
+  facet_wrap(~class) 
+
+```
+
+
+## Average course grades by tutor type and year
+```{r}
+wc %>% 
+  filter(wc_flag==1) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(`tutor type` = factor(tutor_type), year ) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(year, grade, group=`tutor type`, col= `tutor type`)) + geom_line(stat="identity") 
+
+```
+
+## Writing center usage by campus and year
+```{r}
+wc %>% 
+  filter(wc_flag==1) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(campus) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  ggplot(aes(campus, n)) + geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+```
+
+
+## Writing center grades by campus (n > 20)
+```{r}
+wc %>% 
+  filter(wc_flag==1) %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(campus) %>%
+  summarize(n = n(),
+            grade = round(mean(grade_num, na.rm=T),2)) %>%
+  filter(n > 20) %>%
+  kable()
+  
+```
+
+## Retention by class and class grade
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(class, `class grade`=grade_num) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(`class grade`, retained)) + geom_bar(stat="identity", position="dodge") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  facet_wrap(~class) 
+
+```
+
+## Retention by class and writing center use
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(class,  `writing center` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(class, retained, fill=`writing center`, group=`writing center`)) + geom_bar(stat="identity", position="dodge") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+```
+
+## Retention by class, class grade and writing center use
+
+```{r}
+wc %>% 
+  filter(class=="ENGL1010"| class=="ENGL2010" | class=="HIST1700" |
+           class=="COMM1010" | class=="MATH1030" |
+           class=="PSY1100") %>% 
+  group_by(id) %>% 
+  slice(length(id)) %>% 
+  group_by(class, `class grade`=grade_num, `writing center` =factor(wc_flag)) %>%
+  summarize(n = n(),
+            retained = round(mean(retention, na.rm=T),2)) %>%
+  ggplot(aes(`class grade`, retained, fill=`writing center`, group=`writing center`)) + geom_bar(stat="identity", position="dodge") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  facet_wrap(~class) 
+
+```
+
+# Statistical Results
+
+## Methods
+- To investigate grade outcomes for writing center students, we used linear and ordinal logistic regression, with and without matching, using covariates to adjust for differences due to gender, ethnicity, prior academic performance, accumulated credits, term, and number of terms attended.
+- To investigate retention outcomes for writing center students, we used logistic regression, with and without matching, using the same covariates as above in addition to class grade.
+- Grades are a predictor of retention (students with higher grades return for the following semester at higher rates).  If using the writing center produces higher grades, then the writing center likely has only an indirect effect on retention.
+
+## Data
+- The matched dataset used for grade outcomes consisted of 3065 writing center and 3065 non-writing center students.
+- The matched dataset used for retention outcomes consisted of 3082 writing center and 3082 non-writing center students.
+- We considered the following classes:  ENGL 1010, ENGL 2010, HIST 1700, COMM 1010, MATH 1030 and PSY 1100.
+- Writing center students were not counted more than once unless they visited the writing center for more than one class.  
+- Non-writing center students were not counted more than unless they took more than one of the above classes.
+
+## Grades:  Linear regression results
+- Students who used the writing center received higher grades, even after adjusting for differences due to gender, ethnicity, prior academic performance, accumulated credits, term, and number of terms attended.
+- The different models--matched and unmatched linear and ordinal regression--estimated the grade advantage for using the writing center to be between about .3 and .5 on a 4 point scale.
+- The linear model on the matched data, for example, estimated the average grade to be 2.73 without writing center help and `r 2.73 + .41` with.
+- The differences varied by course, but not significantly.
+
+```{r, include = F}
+names(mg)
+display(lm(grade_num ~ gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + wc_flag, data=mg))
+
+display(lm(grade_num ~ gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + wc_flag, data=mg_data))
+
+#Matching
+display(lm(grade_num ~ gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + factor(term_seq) + 
+             factor(term) + wc_flag*class, data=mg_data))
+
+summary(polr(factor(grade_num) ~ gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) +
+               wc_flag, data= mg))
+
+summary(polr(factor(grade_num) ~ white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) +
+               wc_flag, data= mg_data))
+
+```
+
+
+## Retention:  Logistic regression results
+
+```{r, include = F}
+names(mr)
+
+display(glm( retention ~ grade + gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + wc_flag, family="binomial", data=mr))
+
+display(glm( retention ~ grade + gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + wc_flag, family="binomial", data=mr_data))
+
+display(glm( retention ~ grade + wc_flag, family="binomial", data=mr_data))
+
+
+exp(.2)
+exp(.2)/(1 + exp(.2))
+
+exp(1.75 - .14 + .2) / (1 + exp(1.75 - .14 + .2))
+exp(1.75 - .14) / (1 + exp(1.75 - .14))
+
+display(glm( retention ~ grade + gender + white + rescale(prior_gpa) +
+             rescale(prior_credits) + class + factor(term_seq) + 
+             factor(term) + wc_flag*class, family="binomial", data=mr_data))
+
+
+```
+
+- Students who used the writing center returned for the next semester at higher rates than those who did not use the writing center, even after adjusting for differences due to gender, ethnicity, prior academic performance, accumulated credits, term, and number of terms attended.
+- Logistic regression estimated that the odds of a writing center student being retained were about 20% higher than for a non-writing center student.
+- For example, based on the model, students who received a B in one of the classes under investigation and visited the writing center had an 87% retention rate compare to 83% for students who did not visit the writing center.
+- The differences varied by course, but not significantly.
+- One caveat to this result: the retention effect may be indirect, related to the higher grades earned by writing center students.
